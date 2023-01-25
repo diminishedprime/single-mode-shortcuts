@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::fmt::Display;
+
 use iced::alignment::{self, Alignment};
 use iced::event::{self, Event};
 use iced::keyboard;
@@ -33,6 +36,7 @@ enum Todos {
 #[derive(Debug, Default)]
 struct State {
     input_value: String,
+    keymap: KeymapEntry,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +56,23 @@ impl Application for Todos {
         (
             Todos::Loaded(State {
                 input_value: "".to_string(),
+                keymap: {
+                    let mut go_to = HashMap::new();
+                    go_to.insert("g".to_string(), KeymapEntry::Leaf("gmail".to_string()));
+
+                    let mut top_level = HashMap::new();
+                    top_level.insert(
+                        "g".to_string(),
+                        KeymapEntry::Node {
+                            name: "go_to".to_string(),
+                            map: go_to,
+                        },
+                    );
+                    KeymapEntry::Node {
+                        name: "top".to_string(),
+                        map: top_level,
+                    }
+                },
             }),
             Command::none(),
         )
@@ -81,10 +102,7 @@ impl Application for Todos {
                         }
                     }
                     Message::CreateTask => {
-                        println!(
-                            "This is where I would call an external command and then quit., {:?}",
-                            state.input_value
-                        );
+                        state.keymap.run(&state.input_value);
                         Command::none()
                     }
                     _ => Command::none(),
@@ -97,14 +115,34 @@ impl Application for Todos {
 
     fn view(&self) -> Element<Message> {
         match self {
-            Todos::Loaded(State { input_value, .. }) => {
+            Todos::Loaded(State {
+                input_value,
+                keymap,
+            }) => {
                 let input = text_input("Enter shortcut", input_value, Message::InputChanged)
                     .id(INPUT_ID.clone())
                     .padding(15)
                     .size(30)
                     .on_submit(Message::CreateTask);
 
-                let content = column![input].spacing(20).max_width(800);
+                let current_map = input_value
+                    .chars()
+                    .fold(Some(keymap), |acc, key| match acc {
+                        Some(current_map) => match current_map {
+                            KeymapEntry::Leaf(_) => None,
+                            KeymapEntry::Node { map, .. } => map.get(&key.to_string()),
+                        },
+                        None => None,
+                    });
+                let maps = text(
+                    current_map
+                        .map(|map| format!("{}", map))
+                        .unwrap_or("No matching map.".to_string()),
+                )
+                .width(Length::Fill)
+                .size(16);
+
+                let content = column![input, maps].spacing(20).max_width(800);
 
                 scrollable(
                     container(content)
@@ -183,4 +221,58 @@ struct SavedState {
     input_value: String,
     filter: Filter,
     tasks: Vec<Task>,
+}
+
+#[derive(Debug)]
+enum KeymapEntry {
+    Leaf(String),
+    Node {
+        name: String,
+        map: HashMap<String, KeymapEntry>,
+    },
+}
+
+impl Default for KeymapEntry {
+    fn default() -> Self {
+        Self::Node {
+            name: "top".to_string(),
+            map: HashMap::new(),
+        }
+    }
+}
+
+impl KeymapEntry {
+    fn run(&self, input_value: &str) {
+        match input_value.chars().fold(Some(self), |acc, key| match acc {
+            Some(current_map) => match current_map {
+                KeymapEntry::Leaf(_) => None,
+                KeymapEntry::Node { map, .. } => map.get(&key.to_string()),
+            },
+            None => None,
+        }) {
+            Some(KeymapEntry::Leaf(command)) => {
+                println!("Running {}", command);
+                println!("Exiting.");
+            }
+            _ => (),
+        }
+    }
+}
+
+impl Display for KeymapEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeymapEntry::Leaf(leaf) => write!(f, "Launch: {leaf}", leaf = leaf),
+            KeymapEntry::Node { name, map } => {
+                for (key, value) in map.iter() {
+                    let formatted_value = match value {
+                        KeymapEntry::Leaf(leaf) => format!("{leaf}", leaf = leaf),
+                        KeymapEntry::Node { name, .. } => format!("m:{name}", name = name),
+                    };
+                    write!(f, "{key}->{value}", key = key, value = formatted_value)?
+                }
+                Ok(())
+            }
+        }
+    }
 }
