@@ -1,17 +1,16 @@
+#![windows_subsystem = "windows"]
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use iced::alignment::{self, Alignment};
+use iced::alignment::{self};
 use iced::event::{self, Event};
 use iced::keyboard;
 use iced::subscription;
-use iced::theme::{self, Theme};
-use iced::widget::{
-    self, button, checkbox, column, container, row, scrollable, text, text_input, Text,
-};
+use iced::theme::Theme;
+use iced::widget::{self, column, container, scrollable, text, text_input};
 use iced::window;
 use iced::{Application, Element};
-use iced::{Color, Command, Font, Length, Settings, Subscription};
+use iced::{Command, Length, Settings, Subscription};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -30,17 +29,76 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug)]
 enum Todos {
+    Loading,
     Loaded(State),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct State {
     input_value: String,
     keymap: KeymapEntry,
 }
 
+impl State {
+    fn new() -> Self {
+        State {
+            input_value: "".to_string(),
+            keymap: {
+                let mut go_to = HashMap::new();
+                go_to.insert(
+                    "g".to_string(),
+                    KeymapEntry::Leaf(
+                        "gmail".to_string(),
+                        vec![
+                            r#"C:\Program Files\Google\Chrome\Application\chrome.exe"#.to_string(),
+                            "--app".to_string(),
+                            "https://mail.google.com/".to_string(),
+                        ],
+                    ),
+                );
+                go_to.insert(
+                    "m".to_string(),
+                    KeymapEntry::Leaf(
+                        "fb messenger".to_string(),
+                        vec![
+                            r#"C:\Program Files\Google\Chrome\Application\chrome.exe"#.to_string(),
+                            "--app".to_string(),
+                            "https://messenger.com/".to_string(),
+                        ],
+                    ),
+                );
+                go_to.insert(
+                    "t".to_string(),
+                    KeymapEntry::Leaf(
+                        "texts".to_string(),
+                        vec![
+                            r#"C:\Program Files\Google\Chrome\Application\chrome.exe"#.to_string(),
+                            "--app".to_string(),
+                            "https://messages.google.com/".to_string(),
+                        ],
+                    ),
+                );
+
+                let mut top_level = HashMap::new();
+                top_level.insert(
+                    "g".to_string(),
+                    KeymapEntry::Node {
+                        name: "go_to".to_string(),
+                        map: go_to,
+                    },
+                );
+                KeymapEntry::Node {
+                    name: "top".to_string(),
+                    map: top_level,
+                }
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 enum Message {
+    Loaded(State),
     InputChanged(String),
     TabPressed { shift: bool },
     CreateTask,
@@ -54,27 +112,8 @@ impl Application for Todos {
 
     fn new(_flags: ()) -> (Todos, Command<Message>) {
         (
-            Todos::Loaded(State {
-                input_value: "".to_string(),
-                keymap: {
-                    let mut go_to = HashMap::new();
-                    go_to.insert("g".to_string(), KeymapEntry::Leaf("gmail".to_string()));
-
-                    let mut top_level = HashMap::new();
-                    top_level.insert(
-                        "g".to_string(),
-                        KeymapEntry::Node {
-                            name: "go_to".to_string(),
-                            map: go_to,
-                        },
-                    );
-                    KeymapEntry::Node {
-                        name: "top".to_string(),
-                        map: top_level,
-                    }
-                },
-            }),
-            Command::none(),
+            Todos::Loading,
+            Command::perform(State::load(), Message::Loaded),
         )
     }
 
@@ -85,8 +124,6 @@ impl Application for Todos {
     fn update(&mut self, message: Message) -> Command<Message> {
         match self {
             Todos::Loaded(state) => {
-                let mut saved = false;
-
                 let command = match message {
                     Message::InputChanged(value) => {
                         println!("Input changed: {}", &value);
@@ -110,6 +147,10 @@ impl Application for Todos {
 
                 Command::batch(vec![command])
             }
+            Todos::Loading => {
+                *self = Todos::Loaded(State::new());
+                text_input::focus(INPUT_ID.clone())
+            }
         }
     }
 
@@ -129,7 +170,7 @@ impl Application for Todos {
                     .chars()
                     .fold(Some(keymap), |acc, key| match acc {
                         Some(current_map) => match current_map {
-                            KeymapEntry::Leaf(_) => None,
+                            KeymapEntry::Leaf(_, _) => None,
                             KeymapEntry::Node { map, .. } => map.get(&key.to_string()),
                         },
                         None => None,
@@ -152,6 +193,15 @@ impl Application for Todos {
                 )
                 .into()
             }
+            Todos::Loading => container(
+                text("Loading...")
+                    .horizontal_alignment(alignment::Horizontal::Center)
+                    .size(50),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_y()
+            .into(),
         }
     }
 
@@ -170,15 +220,6 @@ impl Application for Todos {
             _ => None,
         })
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Task {
-    description: String,
-    completed: bool,
-
-    #[serde(skip)]
-    state: TaskState,
 }
 
 #[derive(Debug, Clone)]
@@ -215,17 +256,15 @@ impl Default for Filter {
     }
 }
 
-// Persistence
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct SavedState {
-    input_value: String,
-    filter: Filter,
-    tasks: Vec<Task>,
+impl State {
+    async fn load() -> Self {
+        State::new()
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum KeymapEntry {
-    Leaf(String),
+    Leaf(String, Vec<String>),
     Node {
         name: String,
         map: HashMap<String, KeymapEntry>,
@@ -245,14 +284,20 @@ impl KeymapEntry {
     fn run(&self, input_value: &str) {
         match input_value.chars().fold(Some(self), |acc, key| match acc {
             Some(current_map) => match current_map {
-                KeymapEntry::Leaf(_) => None,
+                KeymapEntry::Leaf(_, _) => None,
                 KeymapEntry::Node { map, .. } => map.get(&key.to_string()),
             },
             None => None,
         }) {
-            Some(KeymapEntry::Leaf(command)) => {
+            Some(KeymapEntry::Leaf(command, args)) => {
                 println!("Running {}", command);
+                let (name, args) = args.split_at(1);
+                std::process::Command::new(name[0].clone())
+                    .args(args)
+                    .spawn()
+                    .unwrap();
                 println!("Exiting.");
+                std::process::exit(0)
             }
             _ => (),
         }
@@ -262,14 +307,14 @@ impl KeymapEntry {
 impl Display for KeymapEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KeymapEntry::Leaf(leaf) => write!(f, "Launch: {leaf}", leaf = leaf),
-            KeymapEntry::Node { name, map } => {
+            KeymapEntry::Leaf(leaf, _) => write!(f, "Launch: {leaf}", leaf = leaf),
+            KeymapEntry::Node { map, .. } => {
                 for (key, value) in map.iter() {
                     let formatted_value = match value {
-                        KeymapEntry::Leaf(leaf) => format!("{leaf}", leaf = leaf),
+                        KeymapEntry::Leaf(leaf, _) => format!("{leaf}", leaf = leaf),
                         KeymapEntry::Node { name, .. } => format!("m:{name}", name = name),
                     };
-                    write!(f, "{key}->{value}", key = key, value = formatted_value)?
+                    write!(f, " |{key}->{value}|", key = key, value = formatted_value)?
                 }
                 Ok(())
             }
