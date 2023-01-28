@@ -1,4 +1,4 @@
-use crate::KeymapEntry;
+use crate::{keymap_entry::Leaf, KeymapEntry};
 use std::collections::HashMap;
 
 fn keymap_for(name: &'static str, entries: Vec<(&'static str, KeymapEntry)>) -> KeymapEntry {
@@ -6,6 +6,7 @@ fn keymap_for(name: &'static str, entries: Vec<(&'static str, KeymapEntry)>) -> 
   for (k, m) in entries.into_iter() {
     map.insert(k, m);
   }
+  map.insert("q", KeymapEntry::Leaf(Leaf::Quit));
   KeymapEntry::Node { name, map }
 }
 

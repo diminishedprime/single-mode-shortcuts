@@ -25,9 +25,10 @@ pub struct Launch {
 pub enum Leaf {
   GoToOrLaunch(GoToOrLaunch),
   Launch(Launch),
+  Quit,
 }
 impl Leaf {
-  fn run(&self) -> Result<()> {
+  pub(crate) fn run(&self) -> Result<()> {
     match self {
       Leaf::GoToOrLaunch(GoToOrLaunch {
         workspace_name,
@@ -52,8 +53,9 @@ impl Leaf {
         program.args(*args);
         program.spawn()?;
       }
+      Leaf::Quit => process::exit(0),
     }
-    Ok(())
+    process::exit(0);
   }
 }
 
@@ -117,7 +119,6 @@ impl KeymapEntry {
       })
     {
       leaf.run().unwrap();
-      process::exit(0);
     }
   }
 }
@@ -131,6 +132,7 @@ impl Display for KeymapEntry {
           ..
         }) => write!(f, "Launch: {name}"),
         Leaf::Launch(Launch { name, .. }) => write!(f, "Launch: {name}"),
+        Leaf::Quit => write!(f, "Quit"),
       },
       KeymapEntry::Node { map, .. } => {
         for (key, value) in map.iter() {
@@ -141,6 +143,7 @@ impl Display for KeymapEntry {
                 ..
               }) => format!("Launch: {name}"),
               Leaf::Launch(Launch { name, .. }) => format!("Launch: {name}"),
+              Leaf::Quit => format!("Quit"),
             },
             KeymapEntry::Node { name, .. } => format!("m:{name}"),
           };

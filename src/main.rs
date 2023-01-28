@@ -1,7 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use std::str;
-
+use clap::Parser;
 use iced::alignment;
 use iced::event;
 use iced::keyboard;
@@ -16,11 +15,20 @@ use keymap::get_keymap;
 use keymap_entry::KeymapEntry;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::str;
 
 mod keymap;
 mod keymap_entry;
 
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about= None)]
+struct Args {
+  /// Initial state to the input. For example "g" will go straight to the go_to mode.
+  #[arg(short, long, default_value_t = String::new())]
+  input: String,
+}
 
 pub fn main() -> iced::Result {
   SingleModeShortcuts::run(Settings {
@@ -46,8 +54,9 @@ struct State {
 
 impl State {
   fn new() -> Self {
+    let args = Args::parse();
     State {
-      input_value: "".to_string(),
+      input_value: args.input,
       keymap: get_keymap(),
     }
   }
@@ -132,6 +141,10 @@ impl Application for SingleModeShortcuts {
             },
             None => None,
           });
+        // If we're on a node, run it right away.
+        if let Some(KeymapEntry::Leaf(leaf)) = current_map {
+          leaf.run().unwrap();
+        }
         let maps = text(
           current_map
             .map(|map| format!("{map}"))
