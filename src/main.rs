@@ -1,22 +1,17 @@
 #![windows_subsystem = "windows"]
 
-
-
-
 use std::str;
 
-
-
-use iced::alignment::{self};
-use iced::event::{self, Event};
+use iced::alignment;
+use iced::event;
 use iced::keyboard;
 use iced::subscription;
 use iced::theme::Theme;
 use iced::widget::{self, column, container, scrollable, text, text_input};
 use iced::window;
+use iced::Event;
 use iced::{Application, Element};
 use iced::{Command, Length, Settings, Subscription};
-
 use keymap::get_keymap;
 use keymap_entry::KeymapEntry;
 use once_cell::sync::Lazy;
@@ -28,7 +23,7 @@ mod keymap_entry;
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 
 pub fn main() -> iced::Result {
-  Todos::run(Settings {
+  SingleModeShortcuts::run(Settings {
     window: window::Settings {
       size: (500, 200),
       ..window::Settings::default()
@@ -38,7 +33,7 @@ pub fn main() -> iced::Result {
 }
 
 #[derive(Debug)]
-enum Todos {
+enum SingleModeShortcuts {
   Loading,
   Loaded(State),
 }
@@ -66,15 +61,15 @@ enum Message {
   CreateTask,
 }
 
-impl Application for Todos {
+impl Application for SingleModeShortcuts {
   type Message = Message;
   type Theme = Theme;
   type Executor = iced::executor::Default;
   type Flags = ();
 
-  fn new(_flags: ()) -> (Todos, Command<Message>) {
+  fn new(_flags: ()) -> (SingleModeShortcuts, Command<Message>) {
     (
-      Todos::Loading,
+      SingleModeShortcuts::Loading,
       Command::perform(State::load(), Message::Loaded),
     )
   }
@@ -85,7 +80,7 @@ impl Application for Todos {
 
   fn update(&mut self, message: Message) -> Command<Message> {
     match self {
-      Todos::Loaded(state) => {
+      SingleModeShortcuts::Loaded(state) => {
         let command = match message {
           Message::InputChanged(value) => {
             println!("Input changed: {}", &value);
@@ -109,8 +104,8 @@ impl Application for Todos {
 
         Command::batch(vec![command])
       }
-      Todos::Loading => {
-        *self = Todos::Loaded(State::new());
+      SingleModeShortcuts::Loading => {
+        *self = SingleModeShortcuts::Loaded(State::new());
         text_input::focus(INPUT_ID.clone())
       }
     }
@@ -118,7 +113,7 @@ impl Application for Todos {
 
   fn view(&self) -> Element<Message> {
     match self {
-      Todos::Loaded(State {
+      SingleModeShortcuts::Loaded(State {
         input_value,
         keymap,
       }) => {
@@ -155,7 +150,7 @@ impl Application for Todos {
         )
         .into()
       }
-      Todos::Loading => container(
+      SingleModeShortcuts::Loading => container(
         text("Loading...")
           .horizontal_alignment(alignment::Horizontal::Center)
           .size(50),
