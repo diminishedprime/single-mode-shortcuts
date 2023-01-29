@@ -9,6 +9,7 @@ use iced::theme::Theme;
 use iced::widget::{self, column, container, scrollable, text, text_input};
 use iced::window;
 use iced::Event;
+use iced::Font;
 use iced::{Application, Element};
 use iced::{Command, Length, Settings, Subscription};
 use keymap::get_keymap;
@@ -22,6 +23,8 @@ mod keymap_entry;
 
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 
+const ROBOTO: [u8; 182172] = *include_bytes!("../resources/RobotoMono-VariableFont_wght.ttf");
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about= None)]
 struct Args {
@@ -33,7 +36,7 @@ struct Args {
 pub fn main() -> iced::Result {
   SingleModeShortcuts::run(Settings {
     window: window::Settings {
-      size: (500, 200),
+      size: (500, 300),
       ..window::Settings::default()
     },
     ..Settings::default()
@@ -150,6 +153,10 @@ impl Application for SingleModeShortcuts {
             .map(|map| format!("{map}"))
             .unwrap_or("No matching map.".to_string()),
         )
+        .font(Font::External {
+          name: "Roboto",
+          bytes: &ROBOTO,
+        })
         .width(Length::Fill)
         .size(16);
 

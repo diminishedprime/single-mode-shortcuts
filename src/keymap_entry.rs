@@ -135,6 +135,7 @@ impl Display for KeymapEntry {
       },
       KeymapEntry::Node { map, .. } => {
         for (key, value) in map.iter().sorted() {
+          let key = if key == &" " { "<space>" } else { key };
           let formatted_value = match value {
             KeymapEntry::Leaf(leaf) => match leaf {
               Leaf::GoToOrLaunch(GoToOrLaunch {
@@ -144,9 +145,9 @@ impl Display for KeymapEntry {
               Leaf::Launch(Launch { name, .. }) => name.to_string(),
               Leaf::Quit => "Quit".to_string(),
             },
-            KeymapEntry::Node { name, .. } => format!("mode-{name}"),
+            KeymapEntry::Node { name, .. } => format!("m::{name}"),
           };
-          write!(f, "{key}:{formatted_value} ")?
+          writeln!(f, "{key: >7} => {formatted_value}")?
         }
         Ok(())
       }
