@@ -2,12 +2,16 @@
 
 use clap::Parser;
 use iced::alignment;
+use iced::color;
 use iced::event;
 use iced::keyboard;
 use iced::subscription;
+use iced::theme;
 use iced::theme::Theme;
-use iced::widget::{self, column, container, scrollable, text, text_input};
+
+use iced::widget::{self, column, container, row, text, text_input};
 use iced::window;
+
 use iced::Event;
 use iced::Font;
 use iced::{Application, Element};
@@ -37,6 +41,7 @@ pub fn main() -> iced::Result {
   SingleModeShortcuts::run(Settings {
     window: window::Settings {
       size: (500, 300),
+      decorations: false,
       ..window::Settings::default()
     },
     ..Settings::default()
@@ -61,6 +66,53 @@ impl State {
     State {
       input_value: args.input,
       keymap: get_keymap(),
+    }
+  }
+
+  fn maps(&self) -> Element<Message> {
+    let current_map = self
+      .input_value
+      .chars()
+      .fold(Some(&self.keymap), |acc, key| match acc {
+        Some(current_map) => match current_map {
+          KeymapEntry::Leaf { .. } => None,
+          KeymapEntry::Node { map, .. } => map.get(&*key.to_string()),
+        },
+        None => None,
+      });
+    if let Some(KeymapEntry::Node { map, .. }) = current_map {
+      column(
+        map
+          .iter()
+          .map(|(key, value)| {
+            let key = if key == &" " { "<space>" } else { key };
+            let key = text(format!("{key: >7}"))
+              .font(Font::External {
+                name: "Roboto",
+                bytes: &ROBOTO,
+              })
+              .size(16)
+              .style(color!(0xcb4b16));
+
+            let value = text(value.get_name())
+              .font(Font::External {
+                name: "Roboto",
+                bytes: &ROBOTO,
+              })
+              .size(16)
+              .style(if value.is_mode() {
+                color!(0x2aa198)
+              } else {
+                color!(0xfdf6e3)
+              });
+
+            row![key, value].spacing(8).into()
+          })
+          .collect(),
+      )
+      .into()
+    } else {
+      column![].into()
     }
   }
 }
@@ -144,48 +196,34 @@ impl Application for SingleModeShortcuts {
     }
   }
 
+  fn theme(&self) -> Self::Theme {
+    Theme::custom(theme::Palette {
+      background: color!(0x002b36),
+      text: color!(0xfdf6e3),
+      ..Theme::Dark.palette()
+    })
+  }
+
   fn view(&self) -> Element<Message> {
     match self {
-      SingleModeShortcuts::Loaded(State {
-        input_value,
-        keymap,
-      }) => {
+      SingleModeShortcuts::Loaded(state @ State { input_value, .. }) => {
         let input = text_input("Enter shortcut", input_value, Message::InputChanged)
           .id(INPUT_ID.clone())
-          .padding(15)
-          .size(30)
+          .padding(8)
+          .size(24)
           .on_submit(Message::CreateTask);
 
-        let current_map = input_value
-          .chars()
-          .fold(Some(keymap), |acc, key| match acc {
-            Some(current_map) => match current_map {
-              KeymapEntry::Leaf { .. } => None,
-              KeymapEntry::Node { map, .. } => map.get(&*key.to_string()),
-            },
-            None => None,
-          });
-        let maps = text(
-          current_map
-            .map(|map| format!("{map}"))
-            .unwrap_or("No matching map.".to_string()),
-        )
-        .font(Font::External {
-          name: "Roboto",
-          bytes: &ROBOTO,
-        })
-        .width(Length::Fill)
-        .size(16);
+        let content = column![
+          input, // maps,
+          state.maps()
+        ]
+        .spacing(8);
 
-        let content = column![input, maps].spacing(20).max_width(800);
-
-        scrollable(
-          container(content)
-            .width(Length::Fill)
-            .padding(40)
-            .center_x(),
-        )
-        .into()
+        container(content)
+          .width(Length::Fill)
+          .padding(8)
+          .center_x()
+          .into()
       }
       SingleModeShortcuts::Loading => container(
         text("Loading...")

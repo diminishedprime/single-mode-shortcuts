@@ -77,7 +77,13 @@ pub enum KeymapEntry {
 }
 
 impl KeymapEntry {
-  fn get_name(&self) -> &'static str {
+  pub(crate) fn is_mode(&self) -> bool {
+    match self {
+      KeymapEntry::Leaf(_) => false,
+      KeymapEntry::Node { .. } => true,
+    }
+  }
+  pub(crate) fn get_name(&self) -> &'static str {
     match self {
       KeymapEntry::Leaf(leaf) => match leaf {
         Leaf::GoToOrLaunch(GoToOrLaunch {
@@ -85,7 +91,7 @@ impl KeymapEntry {
           ..
         }) => name,
         Leaf::Launch(Launch { name, .. }) | Leaf::LaunchNoQuit(Launch { name, .. }) => name,
-        Leaf::Quit => "q",
+        Leaf::Quit => "quit",
       },
       KeymapEntry::Node { name, .. } => name,
     }
