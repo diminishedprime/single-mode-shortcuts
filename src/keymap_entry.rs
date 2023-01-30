@@ -6,7 +6,14 @@ use std::{
 };
 
 use anyhow::Result;
+use iced::{
+  color,
+  widget::{column, row, text},
+  Element, Font,
+};
 use itertools::Itertools;
+
+use crate::{Message, ROBOTO};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GoToOrLaunch {
@@ -168,6 +175,52 @@ impl Display for KeymapEntry {
         }
         Ok(())
       }
+    }
+  }
+}
+
+impl KeymapEntry {
+  pub(crate) fn view(&self, input: &str) -> Element<Message> {
+    let current_map = input.chars().fold(Some(self), |acc, key| match acc {
+      Some(current_map) => match current_map {
+        KeymapEntry::Leaf { .. } => None,
+        KeymapEntry::Node { map, .. } => map.get(&*key.to_string()),
+      },
+      None => None,
+    });
+    if let Some(KeymapEntry::Node { map, .. }) = current_map {
+      column(
+        map
+          .iter()
+          .map(|(key, value)| {
+            let key = if key == &" " { "<space>" } else { key };
+            let key = text(format!("{key: >7}"))
+              .font(Font::External {
+                name: "Roboto",
+                bytes: &ROBOTO,
+              })
+              .size(16)
+              .style(color!(0xcb4b16));
+
+            let value = text(value.get_name())
+              .font(Font::External {
+                name: "Roboto",
+                bytes: &ROBOTO,
+              })
+              .size(16)
+              .style(if value.is_mode() {
+                color!(0x2aa198)
+              } else {
+                color!(0xfdf6e3)
+              });
+
+            row![key, value].spacing(8).into()
+          })
+          .collect(),
+      )
+      .into()
+    } else {
+      column![].into()
     }
   }
 }

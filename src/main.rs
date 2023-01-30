@@ -3,19 +3,15 @@
 use clap::Parser;
 use iced::alignment;
 use iced::color;
-use iced::event;
-use iced::keyboard;
-use iced::subscription;
+
 use iced::theme;
 use iced::theme::Theme;
 
-use iced::widget::{self, column, container, row, text, text_input};
+use iced::widget::{column, container, text, text_input};
 use iced::window;
 
-use iced::Event;
-use iced::Font;
 use iced::{Application, Element};
-use iced::{Command, Length, Settings, Subscription};
+use iced::{Command, Length, Settings};
 use keymap::get_keymap;
 use keymap_entry::KeymapEntry;
 use once_cell::sync::Lazy;
@@ -68,60 +64,12 @@ impl State {
       keymap: get_keymap(),
     }
   }
-
-  fn maps(&self) -> Element<Message> {
-    let current_map = self
-      .input_value
-      .chars()
-      .fold(Some(&self.keymap), |acc, key| match acc {
-        Some(current_map) => match current_map {
-          KeymapEntry::Leaf { .. } => None,
-          KeymapEntry::Node { map, .. } => map.get(&*key.to_string()),
-        },
-        None => None,
-      });
-    if let Some(KeymapEntry::Node { map, .. }) = current_map {
-      column(
-        map
-          .iter()
-          .map(|(key, value)| {
-            let key = if key == &" " { "<space>" } else { key };
-            let key = text(format!("{key: >7}"))
-              .font(Font::External {
-                name: "Roboto",
-                bytes: &ROBOTO,
-              })
-              .size(16)
-              .style(color!(0xcb4b16));
-
-            let value = text(value.get_name())
-              .font(Font::External {
-                name: "Roboto",
-                bytes: &ROBOTO,
-              })
-              .size(16)
-              .style(if value.is_mode() {
-                color!(0x2aa198)
-              } else {
-                color!(0xfdf6e3)
-              });
-
-            row![key, value].spacing(8).into()
-          })
-          .collect(),
-      )
-      .into()
-    } else {
-      column![].into()
-    }
-  }
 }
 
 #[derive(Debug, Clone)]
 enum Message {
   Loaded(State),
   InputChanged(String),
-  TabPressed { shift: bool },
   CreateTask,
 }
 
@@ -147,8 +95,6 @@ impl Application for SingleModeShortcuts {
       SingleModeShortcuts::Loaded(state) => {
         let command = match message {
           Message::InputChanged(value) => {
-            println!("Input changed: {}", &value);
-
             let current_map = value
               .chars()
               .fold(Some(&state.keymap), |acc, key| match acc {
@@ -172,13 +118,6 @@ impl Application for SingleModeShortcuts {
             }
 
             Command::none()
-          }
-          Message::TabPressed { shift } => {
-            if shift {
-              widget::focus_previous()
-            } else {
-              widget::focus_next()
-            }
           }
           Message::CreateTask => {
             state.keymap.run(&state.input_value);
@@ -206,7 +145,12 @@ impl Application for SingleModeShortcuts {
 
   fn view(&self) -> Element<Message> {
     match self {
-      SingleModeShortcuts::Loaded(state @ State { input_value, .. }) => {
+      SingleModeShortcuts::Loaded(
+        _state @ State {
+          input_value,
+          keymap,
+        },
+      ) => {
         let input = text_input("Enter shortcut", input_value, Message::InputChanged)
           .id(INPUT_ID.clone())
           .padding(8)
@@ -215,7 +159,7 @@ impl Application for SingleModeShortcuts {
 
         let content = column![
           input, // maps,
-          state.maps()
+          keymap.view(input_value)
         ]
         .spacing(8);
 
@@ -235,22 +179,6 @@ impl Application for SingleModeShortcuts {
       .center_y()
       .into(),
     }
-  }
-
-  fn subscription(&self) -> Subscription<Message> {
-    subscription::events_with(|event, status| match (event, status) {
-      (
-        Event::Keyboard(keyboard::Event::KeyPressed {
-          key_code: keyboard::KeyCode::Tab,
-          modifiers,
-          ..
-        }),
-        event::Status::Ignored,
-      ) => Some(Message::TabPressed {
-        shift: modifiers.shift(),
-      }),
-      _ => None,
-    })
   }
 }
 
