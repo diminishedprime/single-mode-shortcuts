@@ -1,8 +1,4 @@
-use crate::{
-  keymap_entry::{GoToOrLaunch, Launch, Leaf},
-  KeymapEntry,
-};
-
+use crate::types::{GoToOrLaunch, KeymapEntry, Launch, Leaf};
 use std::collections::HashMap;
 
 // TODO - for things that have multiple entries, I want to somehow run the
@@ -55,7 +51,7 @@ fn keymap_for(name: &'static str, entries: Vec<(&'static str, KeymapEntry)>) -> 
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_keymap() -> KeymapEntry {
+pub(crate) fn get_keymap() -> KeymapEntry {
   let apps = {
     let chrome = launch("chrome", "google-chrome-stable", &[]);
     let files = launch("files", "thunar", &[]);
