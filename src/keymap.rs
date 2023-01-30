@@ -50,7 +50,7 @@ fn keymap_for(name: &'static str, entries: Vec<(&'static str, KeymapEntry)>) -> 
   KeymapEntry::Node { name, map }
 }
 
-#[cfg(target_os = "mac")]
+#[cfg(target_os = "macos")]
 pub(crate) fn get_keymap() -> KeymapEntry {
   let apps = {
     keymap_for(
