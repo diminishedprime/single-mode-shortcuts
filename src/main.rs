@@ -96,7 +96,28 @@ impl Application for SingleModeShortcuts {
         let command = match message {
           Message::InputChanged(value) => {
             println!("Input changed: {}", &value);
-            state.input_value = value;
+
+            let current_map = value
+              .chars()
+              .fold(Some(&state.keymap), |acc, key| match acc {
+                Some(current_map) => match current_map {
+                  KeymapEntry::Leaf { .. } => None,
+                  KeymapEntry::Node { map, .. } => map.get(&*key.to_string()),
+                },
+                None => None,
+              });
+
+            // If we're on a node, run it right away.
+            if let Some(KeymapEntry::Leaf(leaf)) = current_map {
+              leaf.run().unwrap();
+            }
+
+            if !matches!(
+              current_map,
+              Some(KeymapEntry::Leaf(keymap_entry::Leaf::LaunchNoQuit(_)))
+            ) {
+              state.input_value = value;
+            }
 
             Command::none()
           }
@@ -144,10 +165,6 @@ impl Application for SingleModeShortcuts {
             },
             None => None,
           });
-        // If we're on a node, run it right away.
-        if let Some(KeymapEntry::Leaf(leaf)) = current_map {
-          leaf.run().unwrap();
-        }
         let maps = text(
           current_map
             .map(|map| format!("{map}"))

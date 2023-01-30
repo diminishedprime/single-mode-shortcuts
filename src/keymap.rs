@@ -12,7 +12,7 @@ fn launch_no_exit(
   program: &'static str,
   args: &'static [&'static str],
 ) -> KeymapEntry {
-  KeymapEntry::Leaf(Leaf::Launch(Launch {
+  KeymapEntry::Leaf(Leaf::LaunchNoQuit(Launch {
     program,
     args,
     name,

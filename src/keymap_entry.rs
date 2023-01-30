@@ -26,6 +26,7 @@ pub struct Launch {
 pub enum Leaf {
   GoToOrLaunch(GoToOrLaunch),
   Launch(Launch),
+  LaunchNoQuit(Launch),
   Quit,
 }
 impl Leaf {
@@ -54,6 +55,12 @@ impl Leaf {
         program.args(*args);
         program.spawn()?;
       }
+      Leaf::LaunchNoQuit(Launch { program, args, .. }) => {
+        let mut program = Command::new(program);
+        program.args(*args);
+        program.spawn()?;
+        return Ok(());
+      }
       Leaf::Quit => process::exit(0),
     }
     process::exit(0);
@@ -77,7 +84,7 @@ impl KeymapEntry {
           launch: Launch { name, .. },
           ..
         }) => name,
-        Leaf::Launch(Launch { name, .. }) => name,
+        Leaf::Launch(Launch { name, .. }) | Leaf::LaunchNoQuit(Launch { name, .. }) => name,
         Leaf::Quit => "q",
       },
       KeymapEntry::Node { name, .. } => name,
@@ -130,7 +137,9 @@ impl Display for KeymapEntry {
           launch: Launch { name, .. },
           ..
         }) => write!(f, "{name}"),
-        Leaf::Launch(Launch { name, .. }) => write!(f, "{name}"),
+        Leaf::Launch(Launch { name, .. }) | Leaf::LaunchNoQuit(Launch { name, .. }) => {
+          write!(f, "{name}")
+        }
         Leaf::Quit => write!(f, "Quit"),
       },
       KeymapEntry::Node { map, .. } => {
@@ -142,7 +151,9 @@ impl Display for KeymapEntry {
                 launch: Launch { name, .. },
                 ..
               }) => name.to_string(),
-              Leaf::Launch(Launch { name, .. }) => name.to_string(),
+              Leaf::Launch(Launch { name, .. }) | Leaf::LaunchNoQuit(Launch { name, .. }) => {
+                name.to_string()
+              }
               Leaf::Quit => "Quit".to_string(),
             },
             KeymapEntry::Node { name, .. } => format!("m::{name}"),
