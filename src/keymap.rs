@@ -203,8 +203,28 @@ pub(crate) fn get_keymap() -> KeymapEntry {
   };
 
   let window = {
-    //
-    keymap_for("window", vec![])
+    let toggle_floating = launch("toggle floating", "i3-msg", &["floating toggle"]);
+    // TODO - these don't really work since the window is focused. Need to figure a way around this.
+    let move_to_0 = launch_no_exit(
+      "move to 0",
+      "i3-msg",
+      &["move container to workspace 0; workspace 0"],
+    );
+    let move_to_1 = launch_no_exit(
+      "move to 1",
+      "i3-msg",
+      &["move container to workspace 1; workspace 1"],
+    );
+
+    keymap_for(
+      "window",
+      vec![
+        //
+        ("f", toggle_floating),
+        ("0", move_to_0),
+        ("1", move_to_1),
+      ],
+    )
   };
 
   let rofi = launch("rofi", "rofi", &["-show", "run"]);
