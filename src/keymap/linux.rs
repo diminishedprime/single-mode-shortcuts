@@ -24,6 +24,7 @@ fn go_to_or_launch(
 pub(crate) fn get_keymap() -> KeymapEntry {
   let apps = {
     let chrome = launch("chrome", "google-chrome-stable", &[]);
+    let vscode = launch("vscode", "code", &[]);
     let files = launch("files", "thunar", &[]);
 
     keymap_for(
@@ -32,6 +33,7 @@ pub(crate) fn get_keymap() -> KeymapEntry {
         //
         ("c", chrome),
         ("f", files),
+        ("v", vscode),
       ],
     )
   };
@@ -77,20 +79,28 @@ pub(crate) fn get_keymap() -> KeymapEntry {
       "google-chrome-stable",
       &["--app=https://messenger.com"],
     );
+    let gtd = go_to_or_launch(
+      "gtd",
+      r"^gtd$",
+      "gtd",
+      "alacritty",
+      &["--class", "gtd", "-e", "gtd"],
+    );
 
     keymap_for(
       "go_to",
       vec![
         //
         ("a", anki),
-        ("d", discord),
-        ("i", signal),
-        ("s", spotify),
-        ("y", ynab),
-        ("t", texts),
         ("c", calendar),
+        ("d", discord),
+        ("e", gtd),
         ("g", gmail),
+        ("i", signal),
         ("m", messenger),
+        ("s", spotify),
+        ("t", texts),
+        ("y", ynab),
       ],
     )
   };
@@ -116,8 +126,8 @@ pub(crate) fn get_keymap() -> KeymapEntry {
       "admin",
       vec![
         //
-        ("l", lock),
         ("e", reload),
+        ("l", lock),
         ("r", restart),
         ("x", logout),
       ],
@@ -150,8 +160,8 @@ pub(crate) fn get_keymap() -> KeymapEntry {
       "toggle",
       vec![
         //
-        ("b", bar),
         ("B", border),
+        ("b", bar),
         ("f", floating),
         ("s", mpv_sticky_float),
       ],
@@ -169,16 +179,16 @@ pub(crate) fn get_keymap() -> KeymapEntry {
     let move_to_0 = launch_no_exit(
       "move to 0",
       "i2-msg",
-      &["move container to workspace 0; workspace 1"],
+      &["move container to workspace 0; workspace 0"],
     );
 
     keymap_for(
       "window",
       vec![
         //
+        ("0", move_to_0),
+        ("1", move_to_1),
         ("f", toggle_floating),
-        ("-1", move_to_0),
-        ("0", move_to_1),
       ],
     )
   };
@@ -195,10 +205,10 @@ pub(crate) fn get_keymap() -> KeymapEntry {
         "brightness",
         vec![
           //
-          ("n", nighttime),
           ("d", daytime),
-          ("k", increase),
           ("j", decrease),
+          ("k", increase),
+          ("n", nighttime),
         ],
       )
     };
@@ -213,10 +223,10 @@ pub(crate) fn get_keymap() -> KeymapEntry {
         "screenshots",
         vec![
           //
-          ("u", full_screen),
           ("a", select_area),
-          ("d", full_screen_delay),
           ("c", current_window),
+          ("d", full_screen_delay),
+          ("u", full_screen),
         ],
       )
     };
@@ -233,14 +243,14 @@ pub(crate) fn get_keymap() -> KeymapEntry {
   keymap_for(
     "",
     vec![
+      (" ", rofi),
       ("a", apps),
+      ("c", toggle),
+      ("f", framework),
       ("g", go_to),
       ("i", admin),
       ("s", sound),
-      ("c", toggle),
       ("w", window),
-      (" ", rofi),
-      ("f", framework),
     ],
   )
 }
